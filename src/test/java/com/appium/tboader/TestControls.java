@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.net.URL;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -95,8 +96,8 @@ public class TestControls {
         clickView("Views");
 
         // scroll up 2 times once we reached views to pick seekbar
-        scrollUp(2);
-        clickView("Seek Bar");
+        //scrollUp(2);
+        // clickView("Seek Bar");
         
         
         //clickView("Controls");
@@ -106,6 +107,7 @@ public class TestControls {
 	}
 	
 	
+
 	
 
 	@AfterClass
@@ -188,7 +190,9 @@ public class TestControls {
 	
 
 	//@Test
-	public void testSpinner() {
+	public void testSpinner() throws InterruptedException {
+		
+		
 		
 		String spinnerId = "com.touchboarder.android.api.demos:id/spinner1";
 
@@ -223,8 +227,10 @@ public class TestControls {
 		scrollUp();
 	}
 	
-	@Test 
-	public void testSeek() {
+	// @Test 
+	public void testSeekBar() throws InterruptedException {
+		
+		clickView("Seek Bar");
 		
 		int targetPct = 80;
 		
@@ -236,13 +242,15 @@ public class TestControls {
 		String sbBounds =  seekBar.getAttribute("bounds");
 		System.out.println("Bounds of seekBar" + seekBar.getAttribute("bounds"));
 
-		int xAxisStartPoint = seekBar.getLocation().getX();
-		int xAxisEndPoint = xAxisStartPoint + seekBar.getSize().getWidth();
-		int yAxis = seekBar.getLocation().getY();
-		
-		System.out.println("xAxisStart: " + xAxisStartPoint);
-		System.out.println("xAxisEndPoint: " + xAxisEndPoint);
-		System.out.println("yAxis: " + yAxis);
+		/*
+		 * int xAxisStartPoint = seekBar.getLocation().getX(); 
+		 * int xAxisEndPoint = xAxisStartPoint + seekBar.getSize().getWidth(); 
+		 * int yAxis = seekBar.getLocation().getY();
+		 * 
+		 * System.out.println("xAxisStart: " + xAxisStartPoint);
+		 * System.out.println("xAxisEndPoint: " + xAxisEndPoint);
+		 * System.out.println("yAxis: " + yAxis);
+		 */
 		
 		// [0,66][1080,116]
 		String coordinate[] = sbBounds.replaceAll("\\]\\[", ",").replaceAll("\\[|\\]", "").split(","); 
@@ -358,6 +366,51 @@ public class TestControls {
 		
 	}
 
+	private static MobileElement safeGetME(String locValue, String type) {
+
+		MobileElement tempME = null;
+		int retry_max = 3;	// also indicate scroll max
+		
+		WebDriverWait wait2 = (WebDriverWait) new WebDriverWait(driver, 8)
+				.ignoring(StaleElementReferenceException.class);
+
+		while (retry_max-- > 0) {
+
+			try {
+				if ( type.contains("id") ) {
+					tempME = (MobileElement) wait2.until(ExpectedConditions.presenceOfElementLocated(By.id(locValue)));
+				}
+				else {
+					tempME = (MobileElement) wait2.until(ExpectedConditions.presenceOfElementLocated(By.xpath(locValue)));
+				}
+				
+				if ( tempME != null ) {
+					return tempME;
+				}
+				else {
+					System.out.println("DEBUG:safeGetME():: [" + locValue + "] not found! To retry..");
+					continue;
+				}
+			}
+			catch (StaleElementReferenceException e) {
+				// not supposed, we already ignore it
+				System.out.println("DEBUG:safeGetME():: Caught [StaleElementReferenceException] retrying.." );
+			}
+			catch (TimeoutException e) {
+				System.out.println("DEBUG:safeGetME():: Caught [TimeoutException] for [" + locValue + "] retrying.." );
+			}
+			catch (Exception e) {
+				System.out.println("DEBUG:safeGetME():: Caught [something else?!] for [" + locValue + "] retrying.." );
+				e.printStackTrace();
+			}
+		}
+		
+		// exhausted retries
+		System.out.println("ERROR:safeGetME()::Exhausted all retries. [" + locValue + "] not found!" );
+		return null;
+		
+	}
+	
 	private static void checkAndClick(String locValue) {
 
 		List<MobileElement> lstElems = driver.findElements(By.xpath(locValue));
@@ -370,7 +423,11 @@ public class TestControls {
 			System.out.println("ERROR: checkAndClick()::element [" + locValue + "] not found in list view!");
 		}
 	
-}	
+	}	
+	
+	private static void clickView(String elemClick) throws InterruptedException {
+		clickView(elemClick, 3);
+	}
 	
 	/**
 	 * Helper method to select and click the list view item identified by elemClick
@@ -378,15 +435,15 @@ public class TestControls {
 	 * @param elemClick String for the element's text attribute
 	 * @throws InterruptedException 
 	 */
-	private static void clickView(String elemClick) throws InterruptedException {
+	private static void clickView(String elemClick, int maxRetry) throws InterruptedException {
 
 		MobileElement parent = null; 
 		List<MobileElement> lstViews = null;
-		int retry_max = 3;
+		int retry_max = 3;	// also indicate scroll max
 		
 		System.out.println("DEBUG:clickView():: Going to click [" + elemClick +"]");
 
-		// we will do <retries times>
+		// we will do <retries times> & scrollUp()
 		// StaleElement exception seems very common here, we will do retry
 		
 		WebDriverWait wait2 = (WebDriverWait) new WebDriverWait(driver, 8)
@@ -408,13 +465,13 @@ public class TestControls {
 						if (view.getAttribute("text").equals(elemClick)) {
 							System.out.println("     ^-- CLICK!");
 							view.click();
-							// break;
 							return ;
 						}
 					}	
 					
 					// if not found?!
-					System.out.println("FATAL:clickView():: [" + elemClick + "] not found! To retry..");
+					System.out.println("ERROR:clickView():: [" + elemClick + "] not found! To scrollUp & retry..");
+					scrollUp();
 					continue;
 					
 				}
@@ -438,5 +495,78 @@ public class TestControls {
 
 	}
 	
+	private void dragDrop(MobileElement source, MobileElement target) {
+		// get X and Y for source
+		// get X and Y for target
+		int srcX = source.getLocation().getX();
+		int srcY = source.getLocation().getY();
+		
+		int tgtX = target.getLocation().getX();
+		int tgtY = target.getLocation().getY();
+		
+		TouchAction action = new TouchAction(driver);
+		
+		action
+		.longPress(PointOption.point(srcX, srcY))
+		.moveTo(PointOption.point(tgtX, tgtX))
+		.release()
+		.perform();		
+		
+		
+		
+		
+		
+	}
+	
+	
+	// 9Oct21
+	// @Test 
+	public void testDragDrop() throws InterruptedException {
+		clickView("Drag and Drop");
+		// com.touchboarder.android.api.demos:id/drag_dot_1
+		// com.touchboarder.android.api.demos:id/drag_dot_2
+		// com.touchboarder.android.api.demos:id/drag_dot_3
+		
+		MobileElement drag = driver.findElement(By.id("com.touchboarder.android.api.demos:id/drag_dot_2"));
+		MobileElement drop = driver.findElement(By.id("com.touchboarder.android.api.demos:id/drag_dot_1"));
+		
+		dragDrop(drag,drop);
+		
+		
+	}
+	
+	// 9Oct21
+	@Test
+	public void testWebView() throws InterruptedException {
+		clickView("WebView");
+		
+		System.out.println("INFO:testWebView():: begin testing");
+		// get size of frame 
+		// android:id/content
+
+		Set<String> contextHandles = driver.getContextHandles();
+		System.out.println(contextHandles.size());
+		for (String cName : contextHandles) {
+			System.out.println(cName);
+		}
+		
+		//driver.context(contextHandles.toArray()[1])
+		
+		
+		//MobileElement mainWebview = safeGetME("android:id/content", "id");
+		//System.out.println("Size of the main frame: " + mainWebview.getAttribute("bounds"));
+		
+		
+		//android.view.View[@content-desc='Hello World! - 1']
+
+		//MobileElement helloWorld = safeGetME("com.touchboarder.android.api.demos:id/wv1", "id");
+		//System.out.println("text of the link:" + helloWorld.getText());
+		
+		// Get all webview, list all
+		
+		
+		
+		
+	}
 	
 }
