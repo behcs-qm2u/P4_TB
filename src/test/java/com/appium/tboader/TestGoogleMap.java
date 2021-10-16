@@ -3,6 +3,7 @@ package com.appium.tboader;
 import static org.junit.Assert.*;
 
 import java.net.URL;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -20,6 +21,7 @@ import io.appium.java_client.MobileElement;
 import io.appium.java_client.MultiTouchAction;
 import io.appium.java_client.TouchAction;
 import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.touch.WaitOptions;
 import io.appium.java_client.touch.offset.PointOption;
 
 public class TestGoogleMap {
@@ -34,8 +36,8 @@ public class TestGoogleMap {
 		
 		
 		// URL url = new URL("http://127.0.0.1:4723/wd/hub");
-		// URL url = new URL("http://192.168.100.185:4723/wd/hub");
-		URL url = new URL("http://192.168.100.41:4723/wd/hub");
+		URL url = new URL("http://192.168.100.185:4723/wd/hub");
+		// URL url = new URL("http://192.168.100.41:4723/wd/hub");
 
 		// Desired capability
 		DesiredCapabilities cap = new DesiredCapabilities();
@@ -93,19 +95,26 @@ public class TestGoogleMap {
 		int height = driver.manage().window().getSize().getHeight();
 		int width = driver.manage().window().getSize().getWidth();
 		
-		Point p1s = new Point((int)(0.5 * width), (int)(0.5 * height));
-		Point p1e = p1s.moveBy(-200, -200);		
+		// drop a pin first
+		// Point pin = new Point((int)(0.5 * width), (int)(0.5 * height));
+		// TouchAction quickTap = new TouchAction(driver).tap(PointOption.point(pin));
+		
+		
+		
+		Point p1s = new Point((int)(0.5 * width) , (int)(0.5 * height) -30);
+		Point p1e = p1s.moveBy(0, -150);		
 		System.out.println("P1 start:" + p1s + ", P1 end:" + p1e);
 		
 		TouchAction action1 = new TouchAction(driver);
 		
 		action1
 		.longPress(PointOption.point(p1s.getX(), p1s.getY()))
-		.moveTo(PointOption.point(p1e.getX(), p1e.getY()))
+//		.waitAction(WaitOptions.waitOptions(Duration.ofMillis(2000)))
+		.moveTo(PointOption.point(p1e))
 		.release();		
 
-		Point p2s = new Point((int)(0.5 * width) + 20, (int)(0.5 * height) + 20);
-		Point p2e = p1s.moveBy(200, 200);		
+		Point p2s = new Point((int)(0.5 * width), (int)(0.5 * height) + 30);
+		Point p2e = p1s.moveBy(0, 150);		
 		System.out.println("P2 start:" + p2s + ", P2 end:" + p2e);
 
 		
@@ -113,24 +122,29 @@ public class TestGoogleMap {
 		
 		action2
 		.longPress(PointOption.point(p2s.getX(), p2s.getY()))
-		.moveTo(PointOption.point(p2e.getX(), p2e.getY()))
+//		.waitAction(WaitOptions.waitOptions(Duration.ofMillis(2000)))
+		.moveTo(PointOption.point(p2e))
 		.release();				
 		
-
+        try {
+			Thread.sleep(8000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+		System.out.println("Going to zoom...");
 		
 		MultiTouchAction action = new MultiTouchAction(driver);
-		action.add(action1);
-		action.add(action2);
-		action.perform();
+		action.add(action1).add(action2).perform();
 		
         try {
-			Thread.sleep(3000);
+			Thread.sleep(8000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
-		
+		System.out.println("Done");
 		
 		
 		
